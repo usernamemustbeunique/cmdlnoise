@@ -3,8 +3,6 @@ const fnl = @import("c.zig").fnl;
 const eql = std.mem.eql;
 
 // TODO: Support all FNL config options
-// TODO: Support starting from nonzero coordinates
-// TODO: Support arbitrary float values for x and y increments
 // TODO: Use doubles internally, return f32s by default, optionally return f64s
 
 pub fn main() !void {
@@ -21,12 +19,17 @@ pub fn main() !void {
     const width = try std.fmt.parseInt(usize, args.next().?, 0);
     const height = try std.fmt.parseInt(usize, args.next().?, 0);
 
+    var startx: f32 = 0;
+    var starty: f32 = 0;
+    var increment: f32 = 1.0;
+
     // Iterate over keyword arguments, if any
     while (args.next()) |arg| {
         var terms = std.mem.splitAny(u8, arg, ":=");
         const k = terms.next().?;
         const v = terms.next().?;
         if (terms.next()) |_| return error.SyntaxError;
+
         if (eql(u8, k, "seed")) {
             noise.seed = try std.fmt.parseInt(c_int, v, 0);
         } else if (eql(u8, k, "frequency")) {
@@ -47,6 +50,12 @@ pub fn main() !void {
             } else {
                 return error.InvalidNoiseType;
             }
+        } else if (eql(u8, k, "startx")) {
+            startx = try std.fmt.parseFloat(f32, v);
+        } else if (eql(u8, k, "starty")) {
+            starty = try std.fmt.parseFloat(f32, v);
+        } else if (eql(u8, k, "increment")) {
+            increment = try std.fmt.parseFloat(f32, v);
         } else {
             return error.InvalidArgument;
         }
@@ -58,7 +67,11 @@ pub fn main() !void {
 
     for (0..width) |x| {
         for (0..height) |y| {
-            _ = try stdout.write(&@as([4]u8, @bitCast(fnl.fnlGetNoise2D(&noise, @floatFromInt(x), @floatFromInt(y)))));
+            _ = try stdout.write(&@as([4]u8, @bitCast(fnl.fnlGetNoise2D(
+                &noise,
+                startx + @as(f32, @floatFromInt(x)) * increment,
+                starty + @as(f32, @floatFromInt(y)) * increment,
+            ))));
         }
     }
     try bw.flush();
@@ -70,6 +83,8 @@ fn printHelp() void {
         \\usage: cmdlnoise [width] [height] <args>
         \\prints width*height noise values to stdout
         \\Optional arguments:
+        \\startx=[float] starty=[float] (default = 0)
+        \\increment=[float] (default = 1)
         \\seed=[int] (default = 1337)
         \\frequency=[float] (default = 0.1)
         \\type=[noise type] (default = OPENSIMPLEX2)
