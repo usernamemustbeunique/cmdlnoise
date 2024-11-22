@@ -9,13 +9,34 @@ pub fn main() !void {
     var noise: fnl.fnl_state = fnl.fnlCreateState();
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const alloc = gpa.allocator();
+    defer _ = gpa.deinit();
+
+    const stdout_file = std.io.getStdOut().writer();
+    var bw = std.io.bufferedWriter(stdout_file);
+    const stdout = bw.writer();
 
     errdefer printHelp();
 
+    // Check for version, help commands
+    var args1 = try std.process.argsWithAllocator(alloc);
+    _ = args1.next();
+    while (args1.next()) |arg| {
+        if (eql(u8, arg, "help")) {
+            printHelp();
+            return;
+        } else if (eql(u8, arg, "version")) {
+            try stdout.print("cmdlnoise version 0.0.1\n", .{});
+            try bw.flush();
+            return;
+        }
+    }
+    _ = args1.deinit();
+
     var args = try std.process.argsWithAllocator(alloc);
+    defer args.deinit();
+    _ = args.next();
 
     // Extract positional arguments
-    _ = args.next();
     const width = try std.fmt.parseInt(usize, args.next().?, 0);
     const height = try std.fmt.parseInt(usize, args.next().?, 0);
 
@@ -61,10 +82,6 @@ pub fn main() !void {
         }
     }
 
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
-
     for (0..width) |x| {
         for (0..height) |y| {
             _ = try stdout.write(&@as([4]u8, @bitCast(fnl.fnlGetNoise2D(
@@ -78,8 +95,14 @@ pub fn main() !void {
 }
 
 fn printHelp() void {
-    std.debug.print(
+    const stdout_file = std.io.getStdOut().writer();
+    var bw = std.io.bufferedWriter(stdout_file);
+    const stdout = bw.writer();
+
+    stdout.print(
         \\cmdlnoise - fastnoiselite on the command line
+        \\version - print version info
+        \\help - print this message
         \\usage: cmdlnoise [width] [height] <args>
         \\prints width*height noise values to stdout
         \\Optional arguments:
@@ -97,5 +120,6 @@ fn printHelp() void {
         \\  VALUE
         \\Other config values not yet implemented
         \\
-    , .{});
+    , .{}) catch return;
+    bw.flush() catch return;
 }
