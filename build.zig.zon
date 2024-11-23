@@ -1,12 +1,6 @@
 .{
     .name = "cmdlnoise",
-    .version = "0.0.1",
-    .dependencies = .{
-        .fastnoiselite = .{
-            .url = "https://github.com/Auburn/FastNoiseLite/archive/refs/tags/v1.1.1.zip",
-            .hash = "12209eea1f6ed9b363e67c14e53968af255dba3879a063851da738b807fadb80dc6b",
-        },
-    },
+    .version = "0.0.2",
     .paths = .{
         "build.zig",
         "build.zig.zon",

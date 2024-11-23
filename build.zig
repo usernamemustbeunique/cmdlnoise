@@ -11,12 +11,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const fnl_dep = b.dependency("fastnoiselite", .{
-        .target = target,
-    });
-    exe.addIncludePath(fnl_dep.path("C"));
-    exe.linkLibC();
-
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
