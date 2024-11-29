@@ -22,7 +22,7 @@ pub fn main() !void {
             printHelp();
             return;
         } else if (eql(u8, arg, "version")) {
-            try stdout.print("cmdlnoise version 0.0.2-dev\n", .{});
+            try stdout.print("0.0.3\n", .{});
             try bw.flush();
             return;
         }
@@ -43,6 +43,8 @@ pub fn main() !void {
     var min: f64 = -1.0;
     var max: f64 = 1.0;
     var use_f64 = false;
+    var use_text = false;
+    var separator: []const u8 = ",";
 
     // Iterate over keyword arguments, if any
     while (args.next()) |arg| {
@@ -145,6 +147,16 @@ pub fn main() !void {
             max = try std.fmt.parseFloat(f64, v);
         } else if (eql(u8, k, "use_f64")) {
             use_f64 = true;
+        } else if (eql(u8, k, "use_text")) {
+            use_text = true;
+        } else if (eql(u8, k, "separator")) {
+            if (eql(u8, v, "\\n")) {
+                separator = "\n";
+            } else if (eql(u8, v, "\\t")) {
+                separator = "\t";
+            } else {
+                separator = v;
+            }
         }
 
         //
@@ -156,24 +168,25 @@ pub fn main() !void {
     for (0..size_x) |x| {
         for (0..size_y) |y| {
             for (0..size_z) |z| {
-                if (use_f64) {
-                    _ = try stdout.write(&@as([8]u8, @bitCast(noise.genNoise3DRange(
-                        start_x + @as(f64, @floatFromInt(x)),
-                        start_y + @as(f64, @floatFromInt(y)),
-                        start_z + @as(f64, @floatFromInt(z)),
-                        f64,
-                        min,
-                        max,
-                    ))));
+                const value = noise.genNoise3DRange(
+                    start_x + @as(f64, @floatFromInt(x)),
+                    start_y + @as(f64, @floatFromInt(y)),
+                    start_z + @as(f64, @floatFromInt(z)),
+                    f64,
+                    min,
+                    max,
+                );
+                if (use_text and use_f64) {
+                    try stdout.print("{d}", .{value});
+                } else if (use_text) {
+                    try stdout.print("{d}", .{@as(f32, @floatCast(value))});
+                } else if (use_f64) {
+                    _ = try stdout.write(&@as([8]u8, @bitCast(value)));
                 } else {
-                    _ = try stdout.write(&@as([4]u8, @bitCast(noise.genNoise3DRange(
-                        start_x + @as(f64, @floatFromInt(x)),
-                        start_y + @as(f64, @floatFromInt(y)),
-                        start_z + @as(f64, @floatFromInt(z)),
-                        f32,
-                        @floatCast(min),
-                        @floatCast(max),
-                    ))));
+                    _ = try stdout.write(&@as([4]u8, @bitCast(@as(f32, @floatCast(value)))));
+                }
+                if (x < size_x - 1 or y < size_y - 1 or z < size_z - 1) {
+                    _ = try stdout.write(separator);
                 }
             }
         }
@@ -196,15 +209,18 @@ fn printHelp() void {
         \\prints width*height noise values to stdout
         \\
         \\cmdlnoise optional arguments:
-        \\start_x=[float] start_y=[float] start_z=[float] (default = 0)
-        \\size_x=[u64] size_y=[u64] size_z=[u64] (default = 1)
-        \\min=[float] max=[float] (default = -1.0, 1.0)
-        \\use_f64 (default = false, returns f32s)
+        \\
+        \\  start_x=[float] start_y=[float] start_z=[float] (default = 0)
+        \\  size_x=[u64] size_y=[u64] size_z=[u64] (default = 1)
+        \\  min=[float] max=[float] (default = -1.0, 1.0)
+        \\  use_f64 (default = false, returns f32s)
+        \\  use_text (default = false)
         \\
         \\FNL configuration options:
-        \\seed=[i32] (default = 1337)
-        \\frequency=[float] (default = 0.1)
-        \\noise_type=[type] (default = simplex)
+        \\
+        \\  seed=[i32] (default = 1337)
+        \\  frequency=[float] (default = 0.1)
+        \\  noise_type=[type] (default = simplex)
         \\
         \\See FastNoiseLite documentation for the full list of options.
         \\
