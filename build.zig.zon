@@ -1,6 +1,6 @@
 .{
     .name = "cmdlnoise",
-    .version = "0.0.2",
+    .version = "0.0.4",
     .paths = .{
         "build.zig",
         "build.zig.zon",

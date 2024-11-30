@@ -22,7 +22,7 @@ pub fn main() !void {
             printHelp();
             return;
         } else if (eql(u8, arg, "version")) {
-            try stdout.print("0.0.3\n", .{});
+            try stdout.print("0.0.4\n", .{});
             try bw.flush();
             return;
         }
@@ -53,83 +53,36 @@ pub fn main() !void {
         const v = terms.next().?;
         if (terms.next()) |_| return error.SyntaxError;
 
-        // FastNoiseLite config settings
-        if (eql(u8, k, "seed")) {
-            noise.seed = try std.fmt.parseInt(i32, v, 0);
-        } else if (eql(u8, k, "frequency")) {
-            noise.frequency = try std.fmt.parseFloat(f64, v);
-        } else if (eql(u8, k, "noise_type")) {
-            var valid = false;
-            inline for (@typeInfo(fnl.NoiseType).Enum.fields) |field| {
-                if (eql(u8, field.name, v)) {
-                    noise.noise_type = @enumFromInt(field.value);
-                    valid = true;
+        // Fastnoiselite config settings, comptime
+        var valid = false;
+        inline for (@typeInfo(fnl.Noise(f64)).Struct.fields) |field| {
+            if (eql(u8, field.name, k)) {
+                switch (@typeInfo(field.type)) {
+                    .Enum => {
+                        inline for (@typeInfo(field.type).Enum.fields) |inner| {
+                            if (eql(u8, inner.name, v)) {
+                                @field(noise, field.name) = @enumFromInt(inner.value);
+                                valid = true;
+                            }
+                        }
+                    },
+                    .Int => {
+                        @field(noise, field.name) = try std.fmt.parseInt(field.type, v, 0);
+                        valid = true;
+                    },
+                    .Float => {
+                        @field(noise, field.name) = try std.fmt.parseFloat(field.type, v);
+                        valid = true;
+                    },
+                    else => {},
                 }
             }
-            if (!valid) return error.InvalidNoiseType;
-        } else if (eql(u8, k, "rotation_type")) {
-            var valid = false;
-            inline for (@typeInfo(fnl.RotationType).Enum.fields) |field| {
-                if (eql(u8, field.name, v)) {
-                    noise.rotation_type = @enumFromInt(field.value);
-                    valid = true;
-                }
-            }
-            if (!valid) return error.InvalidRotationType;
-        } else if (eql(u8, k, "fractal_type")) {
-            var valid = false;
-            inline for (@typeInfo(fnl.FractalType).Enum.fields) |field| {
-                if (eql(u8, field.name, v)) {
-                    noise.fractal_type = @enumFromInt(field.value);
-                    valid = true;
-                }
-            }
-            if (!valid) return error.InvalidFractalType;
-        } else if (eql(u8, k, "octaves")) {
-            noise.octaves = try std.fmt.parseInt(u32, v, 0);
-        } else if (eql(u8, k, "lacunarity")) {
-            noise.lacunarity = try std.fmt.parseFloat(f64, v);
-        } else if (eql(u8, k, "gain")) {
-            noise.gain = try std.fmt.parseFloat(f64, v);
-        } else if (eql(u8, k, "weighted_strength")) {
-            noise.weighted_strength = try std.fmt.parseFloat(f64, v);
-        } else if (eql(u8, k, "ping_pong_strength")) {
-            noise.ping_pong_strength = try std.fmt.parseFloat(f64, v);
-        } else if (eql(u8, k, "cellular_distance")) {
-            var valid = false;
-            inline for (@typeInfo(fnl.CellularDistanceFunc).Enum.fields) |field| {
-                if (eql(u8, field.name, v)) {
-                    noise.cellular_distance = @enumFromInt(field.value);
-                    valid = true;
-                }
-            }
-            if (!valid) return error.InvalidCellularDistanceFunc;
-        } else if (eql(u8, k, "cellular_return")) {
-            var valid = false;
-            inline for (@typeInfo(fnl.CellularReturnType).Enum.fields) |field| {
-                if (eql(u8, field.name, v)) {
-                    noise.cellular_return = @enumFromInt(field.value);
-                    valid = true;
-                }
-            }
-            if (!valid) return error.InvalidCellularReturnType;
-        } else if (eql(u8, k, "cellular_jitter_mod")) {
-            noise.cellular_jitter_mod = try std.fmt.parseFloat(f64, v);
-        } else if (eql(u8, k, "domain_warp_type")) {
-            var valid = false;
-            inline for (@typeInfo(fnl.DomainWarpType).Enum.fields) |field| {
-                if (eql(u8, field.name, v)) {
-                    noise.domain_warp_type = @enumFromInt(field.value);
-                    valid = true;
-                }
-            }
-            if (!valid) return error.InvalidDomainWarpType;
-        } else if (eql(u8, k, "domain_warp_amp")) {
-            noise.domain_warp_amp = try std.fmt.parseFloat(f64, v);
         }
 
         // cmdlnoise-specific options
-        else if (eql(u8, k, "start_x")) {
+        if (valid) {
+            continue;
+        } else if (eql(u8, k, "start_x")) {
             start_x = try std.fmt.parseFloat(f64, v);
         } else if (eql(u8, k, "start_y")) {
             start_y = try std.fmt.parseFloat(f64, v);
@@ -213,8 +166,9 @@ fn printHelp() void {
         \\  start_x=[float] start_y=[float] start_z=[float] (default = 0)
         \\  size_x=[u64] size_y=[u64] size_z=[u64] (default = 1)
         \\  min=[float] max=[float] (default = -1.0, 1.0)
-        \\  use_f64 (default = false, returns f32s)
-        \\  use_text (default = false)
+        \\  use_f64 (default = false, returns single instead of double precision floats)
+        \\  use_text (default = false, returns raw bytes instead of ASCII digits)
+        \\  separator (default = ",") 
         \\
         \\FNL configuration options:
         \\
